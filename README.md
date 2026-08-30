@@ -2,6 +2,13 @@
 
 EmergenceSystem filter that fetches current weather from Open-Meteo. No API key required.
 
+
+<!-- emergence-context -->
+Part of **[EmergenceSystem](https://github.com/EmergenceSystem)** — a distributed
+discovery network of small, single-source agents. This filter joins the em_pop gossip
+mesh and answers `POST /agent/query`; Emquest fans each query out to many filters in
+parallel and aggregates the results.
+
 ## API
 
 Queries the [Open-Meteo Forecast API](https://api.open-meteo.com/v1/forecast). Free and open, no registration needed.
