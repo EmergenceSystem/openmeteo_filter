@@ -41,13 +41,50 @@ base_capabilities() ->
 %%====================================================================
 
 start(_Type, _Args) ->
-    em_filter:start_agent(openmeteo_filter, ?MODULE, #{
-        capabilities => base_capabilities()
-    }),
-    {ok, self()}.
+    case openmeteo_filter_sup:start_link() of
+        {ok, Pid} ->
+            ok = start_pop_and_http(),
+            {ok, Pid};
+        Error ->
+            Error
+    end.
 
 stop(_State) ->
-    em_filter:stop_agent(openmeteo_filter).
+    catch cowboy:stop_listener(openmeteo_filter_query_listener),
+    catch em_pop_sup:stop_node(openmeteo_filter),
+    ok.
+
+%%====================================================================
+%% Internal
+%%====================================================================
+
+start_pop_and_http() ->
+    PopPort   = application:get_env(openmeteo_filter, pop_port,   9544),
+    QueryPort = application:get_env(openmeteo_filter, query_port, 9545),
+    Seeds     = application:get_env(openmeteo_filter, pop_seeds,  []),
+    Vec = em_filter_vec:from_capabilities(base_capabilities()),
+    catch em_pop_sup:stop_node(openmeteo_filter),
+    catch cowboy:stop_listener(openmeteo_filter_query_listener),
+    {ok, PopPid} = em_pop_sup:start_node(openmeteo_filter, #{
+        port            => PopPort,
+        query_port      => QueryPort,
+        vector          => Vec,
+        max_peers       => 100,
+        gossip_interval => 5_000
+    }),
+    lists:foreach(
+        fun({H, P}) -> catch em_pop_node:add_peer(PopPid, H, P) end,
+        Seeds),
+    Dispatch = cowboy_router:compile([
+        {'_', [{"/agent/query", em_filter_http,
+                #{server => openmeteo_filter_server}}]}
+    ]),
+    {ok, _} = cowboy:start_clear(openmeteo_filter_query_listener,
+                                  [{port, QueryPort}],
+                                  #{env => #{dispatch => Dispatch}}),
+    logger:notice("[openmeteo_filter] gossip port ~w  query port ~w",
+                  [PopPort, QueryPort]),
+    ok.
 
 %%====================================================================
 %% Agent handler
