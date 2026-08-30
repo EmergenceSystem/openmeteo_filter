@@ -181,10 +181,10 @@ format_code(Code) ->
 build_embryo(Lat, Lon, Time, Resume, MapUrl) ->
     {true, #{
         <<"properties">> => #{
-            <<"url">>       => list_to_binary(MapUrl),
-            <<"resume">>    => list_to_binary(Resume),
-            <<"latitude">>  => list_to_binary(Lat),
-            <<"longitude">> => list_to_binary(Lon),
+            <<"url">>       => unicode:characters_to_binary(MapUrl),
+            <<"resume">>    => unicode:characters_to_binary(Resume),
+            <<"latitude">>  => unicode:characters_to_binary(Lat),
+            <<"longitude">> => unicode:characters_to_binary(Lon),
             <<"time">>      => Time,
             <<"source">>    => <<"api.open-meteo.com">>
         }
